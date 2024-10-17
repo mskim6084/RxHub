@@ -63,25 +63,27 @@ func GetDrugByBrandName(searchName string) []drugProducts.DrugProduct {
 
 func GetDrugByBrandNameWithWorkers(searchName string) []drugProducts.DrugProduct {
 	var allProds = getAllDrugProducts()
+ 	ingredMap := GetActiveIngredient()
 
-	numOfWorkers := 5
+	numOfWorkers := 100
 
 	//fmt.Println(allProds)
 
-	results := manager(allProds, searchName, numOfWorkers)
+	results := manager(allProds, searchName, ingredMap, numOfWorkers)
 
 	fmt.Println(results)
 
 	return results
 }
 
-func worker(id int, searchName string, drugs []drugProducts.DrugProduct, wg *sync.WaitGroup) []drugProducts.DrugProduct {
+func worker(id int, searchName string, drugs []drugProducts.DrugProduct, ingredMap map[uint32][]drugProducts.ActiveIngredient ,wg *sync.WaitGroup) []drugProducts.DrugProduct {
 	defer wg.Done()
 
 	var matchedDrugs []drugProducts.DrugProduct
 
 	for _, drug := range drugs {
 		if strings.Contains(strings.ToLower(drug.BrandName), strings.ToLower(searchName)) {
+			drug.ActiveIngredients = ingredMap[drug.DrugCode]
 			matchedDrugs = append(matchedDrugs, drug)
 		}
 	}
@@ -89,7 +91,7 @@ func worker(id int, searchName string, drugs []drugProducts.DrugProduct, wg *syn
 	return matchedDrugs
 }
 
-func manager(drugs []drugProducts.DrugProduct, searchName string, numOfWorkers int) []drugProducts.DrugProduct {
+func manager(drugs []drugProducts.DrugProduct, searchName string, ingredMap map[uint32][]drugProducts.ActiveIngredient ,numOfWorkers int) []drugProducts.DrugProduct {
 	var wg sync.WaitGroup
 
 	results := []drugProducts.DrugProduct{}
@@ -106,7 +108,7 @@ func manager(drugs []drugProducts.DrugProduct, searchName string, numOfWorkers i
 
 		wg.Add(1)
 		go func(drugChunk []drugProducts.DrugProduct) {
-			matched := worker(i+1, searchName, drugChunk, &wg)
+			matched := worker(i+1, searchName, drugChunk, ingredMap, &wg)
 
 			wg.Add(1)
 			go func() {
