@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 )
 
 func getAllDrugProducts() []drugProducts.DrugProduct {
@@ -58,6 +59,66 @@ func GetDrugByBrandName(searchName string) []drugProducts.DrugProduct {
 	//fmt.Printf("The time it took was %f\n The getting the drugs api took %f Getting the ingredients took %f\n", totalTimeTook.Seconds(), apiEnd.Seconds(), ingredMapEnd.Seconds())
 
 	return resultProducts
+}
+
+func GetDrugByBrandNameWithWorkers(searchName string) []drugProducts.DrugProduct {
+	var allProds = getAllDrugProducts()
+
+	numOfWorkers := 5
+
+	//fmt.Println(allProds)
+
+	results := manager(allProds, searchName, numOfWorkers)
+
+	fmt.Println(results)
+
+	return results
+}
+
+func worker(id int, searchName string, drugs []drugProducts.DrugProduct, wg *sync.WaitGroup) []drugProducts.DrugProduct {
+	defer wg.Done()
+
+	var matchedDrugs []drugProducts.DrugProduct
+
+	for _, drug := range drugs {
+		if strings.Contains(strings.ToLower(drug.BrandName), strings.ToLower(searchName)) {
+			matchedDrugs = append(matchedDrugs, drug)
+		}
+	}
+
+	return matchedDrugs
+}
+
+func manager(drugs []drugProducts.DrugProduct, searchName string, numOfWorkers int) []drugProducts.DrugProduct {
+	var wg sync.WaitGroup
+
+	results := []drugProducts.DrugProduct{}
+
+	chunckSize := (len(drugs) + numOfWorkers - 1) / numOfWorkers
+
+	for i := 0; i < numOfWorkers; i++ {
+		start := i * chunckSize
+		end := start + chunckSize
+
+		if end > len(drugs) {
+			end = len(drugs)
+		}
+
+		wg.Add(1)
+		go func(drugChunk []drugProducts.DrugProduct) {
+			matched := worker(i+1, searchName, drugChunk, &wg)
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				results = append(results, matched...)
+			}()
+		}(drugs[start:end])
+	}
+
+	wg.Wait()
+
+	return results
 }
 
 func GetActiveIngredient() map[uint32][]drugProducts.ActiveIngredient {
