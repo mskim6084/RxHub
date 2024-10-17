@@ -8,6 +8,11 @@ import (
 	"net/http"
 )
 
+type RequestBody struct {
+	Key   string `json:"name"`
+	Value string `json:"Value"`
+}
+
 func getByBrandName(response http.ResponseWriter, request *http.Request) {
 	brandName := request.URL.Query().Get("brandName")
 
@@ -32,10 +37,36 @@ func getByBrandName(response http.ResponseWriter, request *http.Request) {
 	response.Write(jsonResponse)
 }
 
+func addUser(response http.ResponseWriter, request *http.Request) {
+	var reqBody RequestBody
+
+	if err := json.NewDecoder(request.Body).Decode(&reqBody); err != nil {
+		fmt.Printf("Invalid JSON %s\n", err)
+	}
+
+	fmt.Printf("The request body was %s\n", reqBody)
+
+	defer request.Body.Close()
+
+	resToClient := map[string]interface{}{
+		"status":          200,
+		"responseMessage": "Successfully added!",
+	}
+
+	jsonData, err := json.Marshal(resToClient)
+
+	if err != nil {
+		fmt.Printf("Could not convert to JSON %s\n", err)
+	}
+
+	response.Write(jsonData)
+}
+
 func main() {
 	http.HandleFunc("/getByBrandName", getByBrandName)
+	http.HandleFunc("/addUser", addUser)
 
-	err := http.ListenAndServe(":3333", nil)
+	err := http.ListenAndServe(":3333", nil)git 
 
 	if errors.Is(err, http.ErrServerClosed) {
 		fmt.Printf("Server closed \n")
