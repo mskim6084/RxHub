@@ -66,7 +66,7 @@ func main() {
 	http.HandleFunc("/getByBrandName", getByBrandName)
 	http.HandleFunc("/addUser", addUser)
 
-	err := http.ListenAndServe(":3333", nil)git 
+	err := http.ListenAndServe(":3333", nil)
 
 	if errors.Is(err, http.ErrServerClosed) {
 		fmt.Printf("Server closed \n")
