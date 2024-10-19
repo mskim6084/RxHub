@@ -2,6 +2,7 @@ package main
 
 import (
 	dpdService "RxHub/dpdService"
+	middleware "RxHub/server/middleware"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,14 @@ import (
 type RequestBody struct {
 	Key   string `json:"name"`
 	Value string `json:"Value"`
+}
+
+func middlewareChain(handler http.Handler, middleswares ...func(http.Handler) http.Handler) http.Handler {
+	for _, m := range middleswares {
+		handler = m(handler)
+	}
+
+	return handler
 }
 
 func getByBrandName(response http.ResponseWriter, request *http.Request) {
@@ -89,7 +98,9 @@ func addUser(response http.ResponseWriter, request *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/getByBrandName", getByBrandName)
+	brandNameHandler := http.HandlerFunc(getByBrandName)
+
+	http.Handle("/getByBrandName", middlewareChain(brandNameHandler, middleware.RateLimiter))
 	http.HandleFunc("/getByBrandNameWithWorkers", getByBrandNameWithWorkers)
 	http.HandleFunc("/addUser", addUser)
 
