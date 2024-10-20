@@ -1,18 +1,16 @@
 package main
 
 import (
+	"RxHub/client/user"
+	users "RxHub/client/user"
 	dpdService "RxHub/dpdService"
 	middleware "RxHub/server/middleware"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 )
-
-type RequestBody struct {
-	Key   string `json:"name"`
-	Value string `json:"Value"`
-}
 
 func middlewareChain(handler http.Handler, middleswares ...func(http.Handler) http.Handler) http.Handler {
 	for _, m := range middleswares {
@@ -73,13 +71,20 @@ func getByBrandNameWithWorkers(response http.ResponseWriter, request *http.Reque
 }
 
 func addUser(response http.ResponseWriter, request *http.Request) {
-	var reqBody RequestBody
+	var addUserBody users.User
 
-	if err := json.NewDecoder(request.Body).Decode(&reqBody); err != nil {
+	if err := json.NewDecoder(request.Body).Decode(&addUserBody); err != nil {
 		fmt.Printf("Invalid JSON %s\n", err)
 	}
 
-	fmt.Printf("The request body was %s\n", reqBody)
+	fmt.Printf("The request body was %s\n", addUserBody)
+
+	users.CreatedUsers[users.UserCount] = addUserBody
+
+	users.UserCount += 1
+
+	fmt.Printf("New user added\n")
+	fmt.Println(users.CreatedUsers)
 
 	defer request.Body.Close()
 
@@ -97,12 +102,70 @@ func addUser(response http.ResponseWriter, request *http.Request) {
 	response.Write(jsonData)
 }
 
+func checkHealth(response http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodGet {
+		http.Error(response, "Wrong Method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	resToClient := map[string]interface{}{
+		"status":          200,
+		"responseMessage": "Health is good",
+	}
+
+	jsonData, err := json.Marshal(resToClient)
+
+	if err != nil {
+		fmt.Printf("Could not convert to JSON %s\n", err)
+	}
+
+	response.Write(jsonData)
+}
+
+func deleteUser(response http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodDelete {
+		http.Error(response, "/deleteUser got Wrong method\n", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userIdStr := request.URL.Query().Get("userId")
+
+	userId, err := strconv.ParseInt(userIdStr, 10, 64)
+
+	if err != nil {
+		fmt.Printf("Couldn't delete user %s\n", err)
+		http.Error(response, "Could not delete user, please try again", http.StatusInternalServerError)
+		return
+	}
+
+	delete(users.CreatedUsers, int(userId))
+
+	fmt.Println(user.CreatedUsers)
+
+	resToClient := map[string]interface{}{
+		"status":          200,
+		"responseMessage": "Successfully deleted a user",
+	}
+
+	jsonData, err := json.Marshal(resToClient)
+
+	if err != nil {
+		fmt.Printf("Could not convert to JSON %s\n", err)
+		http.Error(response, "Could not delete user, please try again", http.StatusInternalServerError)
+	}
+
+	response.Write(jsonData)
+}
+
 func main() {
 	brandNameHandler := http.HandlerFunc(getByBrandName)
+	brandNameWithWorkerHandler := http.HandlerFunc(getByBrandNameWithWorkers)
 
-	http.Handle("/getByBrandName", middlewareChain(brandNameHandler, middleware.RateLimiter))
-	http.HandleFunc("/getByBrandNameWithWorkers", getByBrandNameWithWorkers)
+	http.Handle("/getByBrandName", middlewareChain(brandNameHandler, middleware.TimeBasedRateLimiter))
+	http.Handle("/getByBrandNameWithWorkers", middlewareChain(brandNameWithWorkerHandler, middleware.TokenBucketRateLimiter))
 	http.HandleFunc("/addUser", addUser)
+	http.HandleFunc("/health", checkHealth)
+	http.HandleFunc("/deleteUser", deleteUser)
 
 	err := http.ListenAndServe(":3333", nil)
 

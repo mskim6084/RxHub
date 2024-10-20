@@ -53,7 +53,7 @@ func GetDrugByBrandName(searchName string) []drugProducts.DrugProduct {
 		}
 	}
 
-	fmt.Println(resultProducts)
+	//fmt.Println(resultProducts)
 	//totalTimeTook := time.Since(start)
 
 	//fmt.Printf("The time it took was %f\n The getting the drugs api took %f Getting the ingredients took %f\n", totalTimeTook.Seconds(), apiEnd.Seconds(), ingredMapEnd.Seconds())
