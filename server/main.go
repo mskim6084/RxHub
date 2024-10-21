@@ -157,6 +157,12 @@ func deleteUser(response http.ResponseWriter, request *http.Request) {
 	response.Write(jsonData)
 }
 
+func updateUser(response http.ResponseWriter, request *http.Request){
+	if request.Method != http.MethodPut {
+		http.Error(response, "/updateUser got wrong method", http.StatusMethodNotAllowed)
+	}
+}
+
 func main() {
 	brandNameHandler := http.HandlerFunc(getByBrandName)
 	brandNameWithWorkerHandler := http.HandlerFunc(getByBrandNameWithWorkers)
@@ -166,6 +172,7 @@ func main() {
 	http.HandleFunc("/addUser", addUser)
 	http.HandleFunc("/health", checkHealth)
 	http.HandleFunc("/deleteUser", deleteUser)
+	http.HandleFunc("/updateUser", updateUser)
 
 	err := http.ListenAndServe(":3333", nil)
 
