@@ -130,6 +130,11 @@ func deleteUser(response http.ResponseWriter, request *http.Request) {
 
 	userIdStr := request.URL.Query().Get("userId")
 
+	if(userIdStr == "") {
+		http.Error(response, "Missing field required: [userId].", http.StatusBadRequest)
+		return
+	}
+
 	userId, err := strconv.ParseInt(userIdStr, 10, 64)
 
 	if err != nil {
@@ -157,10 +162,36 @@ func deleteUser(response http.ResponseWriter, request *http.Request) {
 	response.Write(jsonData)
 }
 
-func updateUser(response http.ResponseWriter, request *http.Request){
+func updateUserName(response http.ResponseWriter, request *http.Request){
 	if request.Method != http.MethodPut {
 		http.Error(response, "/updateUser got wrong method", http.StatusMethodNotAllowed)
+		return 
 	}
+
+	userIdStr := request.URL.Query().Get("userId")
+	name := request.URL.Query().Get("name")
+
+	if userIdStr == "" || name == "" {
+		http.Error(response, "Missing field required: [userId, name]", http.StatusBadRequest)
+		return
+	}
+
+	userId, err := strconv.ParseInt(userIdStr, 10, 64)
+
+	if err != nil {
+		fmt.Printf("Couldn't delete user %s\n", err)
+		http.Error(response, "Could not delete user, please try again", http.StatusInternalServerError)
+		return
+	}
+
+	user, ok := users.CreatedUsers[int(userId)] 
+
+	if !ok {
+		http.Error(response, "User does not exist", http.StatusBadRequest)
+		return
+	}
+
+	user.Name = name
 }
 
 func main() {
@@ -172,7 +203,7 @@ func main() {
 	http.HandleFunc("/addUser", addUser)
 	http.HandleFunc("/health", checkHealth)
 	http.HandleFunc("/deleteUser", deleteUser)
-	http.HandleFunc("/updateUser", updateUser)
+	http.HandleFunc("/updateUserName", updateUserName)
 
 	err := http.ListenAndServe(":3333", nil)
 

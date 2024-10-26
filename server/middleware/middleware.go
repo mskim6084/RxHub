@@ -23,7 +23,7 @@ func TimeBasedRateLimiter(next http.Handler) http.Handler {
 		mu.Lock()
 		defer mu.Unlock()
 
-		fmt.Printf("Rate Limiter check!")
+		//fmt.Printf("Rate Limiter check!")
 
 		if lastTime, exists := lastRequest[clientIP]; exists {
 
